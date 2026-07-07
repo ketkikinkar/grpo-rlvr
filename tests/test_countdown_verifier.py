@@ -36,3 +36,7 @@ def test_extract_answer_expr_pulls_inner_text():
 
 def test_extract_answer_expr_returns_none_when_absent():
     assert extract_answer_expr("no tags here") is None
+
+def test_unary_negative_number_supported():
+    completion = "</think><answer>-3+8</answer>"
+    assert countdown_reward(completion, numbers=[3, 8], target=5) == 1.0
