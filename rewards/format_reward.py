@@ -1,6 +1,6 @@
 import re
 
-_FORMAT_RE = re.compile(r"^\s*(.*?)</think><answer>(.*?)</answer>\s*$", re.DOTALL)
+_FORMAT_RE = re.compile(r"^\s*(.*?)</think>\s*<answer>(.*?)</answer>\s*$", re.DOTALL)
 
 
 def format_reward(completion: str) -> float:

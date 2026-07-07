@@ -19,3 +19,7 @@ def test_out_of_order_tags_gets_zero():
 def test_extra_text_after_answer_gets_zero():
     text = "</think><answer>4*5+3</answer> hope that's right!"
     assert format_reward(text) == 0.0
+
+def test_whitespace_between_think_and_answer_is_tolerated():
+    text = "reasoning here</think>\n<answer>44</answer>"
+    assert format_reward(text) == 1.0
