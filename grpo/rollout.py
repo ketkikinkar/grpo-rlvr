@@ -12,6 +12,27 @@ class RolloutBatch:
     prompt_index: list[int]         # which original prompt (0-indexed) each row came from
 
 
+def _build_completion_mask(completion_ids: torch.Tensor, eos_token_id: int, pad_token_id: int) -> torch.Tensor:
+    """1 for every generated completion token up to and including the first
+    EOS token in each row; 0 for everything after (true padding).
+
+    Pure/model-free so it can be unit tested in isolation. Handles the common
+    case `pad_token_id == eos_token_id` correctly: a naive
+    `(completion_ids != pad_token_id)` mask would zero out the EOS token
+    itself in that case, and `torch.where(seen_eos <= 1, mask, 0)` can only
+    ever turn an existing 1 into a 0 (never the reverse), so the EOS token
+    would incorrectly stay excluded. Instead we derive the mask purely from
+    "has an EOS occurred strictly before this position", which is 0 (i.e.
+    included) at the EOS position itself and at every position before it, and
+    1 (i.e. excluded, mask=0) at every position after it. Rows that never
+    emit EOS within max_new_tokens keep `seen_eos_before` at 0 everywhere, so
+    the whole row stays included.
+    """
+    eos_positions = (completion_ids == eos_token_id).long()
+    seen_eos_before = eos_positions.cumsum(dim=1) - eos_positions
+    return (seen_eos_before == 0).long()
+
+
 def generate_rollouts(model, tokenizer, prompts: list[str], group_size: int,
                        max_new_tokens: int, temperature: float) -> RolloutBatch:
     """Sample `group_size` completions per prompt from `model` at `temperature`.
@@ -36,12 +57,9 @@ def generate_rollouts(model, tokenizer, prompts: list[str], group_size: int,
         )
 
     completion_ids = out[:, prompt_len:]
-    completion_mask = (completion_ids != tokenizer.pad_token_id).long()
-    # first pad token after the model's own EOS should still count as "generated"
-    # up to and including EOS; mask everything after via cumulative product
-    eos_positions = (completion_ids == tokenizer.eos_token_id).long()
-    seen_eos = eos_positions.cumsum(dim=1)
-    completion_mask = torch.where(seen_eos <= 1, completion_mask, torch.zeros_like(completion_mask))
+    completion_mask = _build_completion_mask(
+        completion_ids, tokenizer.eos_token_id, tokenizer.pad_token_id
+    )
 
     completion_texts = tokenizer.batch_decode(completion_ids, skip_special_tokens=True)
     prompt_index = [i // group_size for i in range(len(prompts) * group_size)]

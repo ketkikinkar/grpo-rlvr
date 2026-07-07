@@ -1,0 +1,17 @@
+model_id: "Qwen/Qwen2.5-0.5B"
+task: "countdown"
+seed: 0
+group_size: 8
+max_new_tokens: 256
+temperature: 0.8
+clip_eps: 0.2
+kl_coef: 0.04
+learning_rate: 1.0e-6
+max_grad_norm: 1.0
+prompts_per_step: 16          # -> effective batch = prompts_per_step * group_size
+num_train_steps: 500
+gradient_checkpointing: true
+bf16: true
+eval_every_n_steps: 50
+save_every_n_steps: 100
+wandb_project: "grpo-rlvr-countdown"
