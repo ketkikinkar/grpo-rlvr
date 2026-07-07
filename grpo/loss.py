@@ -36,9 +36,12 @@ def grpo_loss(policy_logprobs: torch.Tensor, ref_logprobs: torch.Tensor,
     bool_mask = completion_mask.bool()
     denom = mask.sum().clamp(min=1.0)
     zeros = torch.zeros_like(per_token_loss)
+    # torch.where, not `* mask`, to avoid inf*0=nan when masked positions hold
+    # non-finite ratios (e.g. from unclamped policy logprobs).
     loss = torch.where(bool_mask, per_token_loss, zeros).sum() / denom
 
     with torch.no_grad():
+        # Same torch.where rationale as above, applied to the logging metrics.
         clip_frac = torch.where(bool_mask, (unclipped != clipped).float(), torch.zeros_like(mask)).sum() / denom
         mean_kl = torch.where(bool_mask, kl, torch.zeros_like(kl)).sum() / denom
         mean_ratio = torch.where(bool_mask, ratio, torch.zeros_like(ratio)).sum() / denom
