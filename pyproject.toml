@@ -20,4 +20,4 @@ vllm = ["vllm>=0.6.3"]
 dev = ["pytest>=8.0"]
 
 [tool.setuptools]
-packages = ["data", "rewards"]
+packages = ["data", "rewards", "grpo"]
