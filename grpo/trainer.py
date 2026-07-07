@@ -1,3 +1,5 @@
+import gc
+
 import torch
 import torch.nn.functional as F
 
@@ -88,7 +90,7 @@ class GRPOTrainer:
 
         response_lengths = rollouts.completion_mask.sum(dim=1).float()
 
-        return {
+        metrics = {
             "loss": loss.item(),
             "mean_reward": rewards_t.mean().item(),
             "reward_std": rewards_t.std().item(),
@@ -97,3 +99,14 @@ class GRPOTrainer:
             "grad_norm": grad_norm.item(),
             "response_length": response_lengths.mean().item(),
         }
+
+        # Explicitly drop references to large intermediate tensors (rollout
+        # batch, logprob tensors, loss) so refcounting frees them immediately,
+        # then ask MPS's caching allocator to release cached-but-unused
+        # memory back to the OS (it doesn't always do this proactively).
+        del rollouts, old_logprobs, ref_logprobs, policy_logprobs, loss
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+        gc.collect()
+
+        return metrics

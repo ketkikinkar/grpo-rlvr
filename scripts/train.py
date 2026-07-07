@@ -110,7 +110,10 @@ def main():
 
         if step % cfg["save_every_n_steps"] == 0:
             ckpt_dir = f"{run_dir}/checkpoints/step_{step}"
-            policy.save_pretrained(ckpt_dir)
+            # Save checkpoint weights in fp16 to roughly halve on-disk size;
+            # cast back to fp32 immediately since training continues in fp32.
+            policy.half().save_pretrained(ckpt_dir)
+            policy.float()
             tokenizer.save_pretrained(ckpt_dir)
 
     # Always save a final checkpoint so downstream inspection has the
@@ -119,7 +122,10 @@ def main():
     final_step = cfg["num_train_steps"] - 1
     final_ckpt_dir = f"{run_dir}/checkpoints/step_{final_step}"
     if not os.path.isdir(final_ckpt_dir):
-        policy.save_pretrained(final_ckpt_dir)
+        # Save checkpoint weights in fp16 to roughly halve on-disk size;
+        # cast back to fp32 immediately since training continues in fp32.
+        policy.half().save_pretrained(final_ckpt_dir)
+        policy.float()
         tokenizer.save_pretrained(final_ckpt_dir)
 
     elapsed_hours = (time.time() - start_time) / 3600
