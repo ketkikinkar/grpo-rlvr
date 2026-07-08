@@ -25,6 +25,18 @@ def pass_at_k(rewards_for_one_prompt: list[float], k: int) -> float:
 def majority_vote_at_k(answers: list[str], ground_truth: str) -> float:
     """1.0 if the plurality answer string among the first k completions
     equals ground_truth (ties broken by Counter's stable first-seen order).
+
+    NOTE: For Countdown, this metric has a fundamental limitation. _extract_answer_string
+    returns the raw, un-evaluated arithmetic expression string (e.g. "68 + (2-50)*54"),
+    while ground_truth is the bare target number as a string (e.g. "3354"). A
+    genuinely correct solution EVALUATES to the target but is almost never textually
+    identical to it. So majority_vote_at_k for Countdown can only register a "pass"
+    via a degenerate non-attempt (the model outputting just the bare number with no
+    arithmetic) -- it is NOT a meaningful solve-rate signal for this task.
+    Use pass_at_k (which checks reward >= 2.0, i.e. genuine numeric correctness) as
+    the real Countdown correctness metric instead.
+    This limitation does NOT apply to GSM8K, where ground_truth genuinely is the
+    literal final numeric answer, so string-matching is meaningful there.
     """
     counts = Counter(a.strip() for a in answers)
     plurality, _ = counts.most_common(1)[0]
@@ -33,6 +45,10 @@ def majority_vote_at_k(answers: list[str], ground_truth: str) -> float:
 
 def _extract_answer_string(text: str, task: str) -> str:
     if task == "countdown":
+        # Returns the raw, un-evaluated arithmetic expression string (e.g. "68 + (2-50)*54")
+        # This is compared against ground_truth (bare target number string, e.g. "3354") in
+        # majority_vote_at_k, which is a fragile metric for this task -- see majority_vote_at_k
+        # docstring for details.
         return extract_answer_expr(text) or ""
     match = GSM8K_ANSWER_RE.search(text)
     return match.group(1).strip() if match else ""
@@ -43,6 +59,12 @@ def build_scaling_curve(model_path: str, dataset, task: str, ks: list[int],
     """For each prompt, sample max(ks) completions once, then compute
     pass@k and majority-vote@k for every k in `ks` by slicing that same
     sample -- avoids re-generating per k.
+
+    For Countdown: ground_truth is set to the bare target number (e.g. "3354"),
+    which is compared against extracted answer strings that are raw arithmetic
+    expressions (e.g. "68 + (2-50)*54"). This mismatch makes majority_vote_at_k
+    an unreliable metric for Countdown -- prefer pass_at_k instead. See
+    majority_vote_at_k docstring for details.
     """
     from rewards.countdown_verifier import countdown_reward
     from rewards.gsm8k_verifier import gsm8k_reward
