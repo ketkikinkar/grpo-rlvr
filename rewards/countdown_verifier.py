@@ -51,26 +51,33 @@ def _extract_used_numbers(expr: str) -> list[float] | None:
 
 
 def countdown_reward(completion: str, numbers: list[int], target: int, eps: float = 1e-4) -> float:
-    """Rule-based Countdown reward: 1.0 iff the completion is well-formed AND
-    the <answer> expression uses each of `numbers` exactly once and evaluates
-    to `target`. Returns 0.0 for any format violation, parse failure, wrong
-    multiset of numbers used, or wrong result — never raises.
+    """Additive, tiered Countdown reward (nano-aha-moment style):
+    `format_reward(completion) + correctness`, where correctness is a binary
+    1.0/0.0 for whether the <answer> expression uses each of `numbers`
+    exactly once and evaluates to `target`. This avoids the degenerate
+    strict-binary reward where every sample in a GRPO group can score
+    identically, collapsing the group-relative advantage to exactly zero.
+
+    Returns 0.0 only when the completion fails the format structure check
+    entirely (no usable answer region). Otherwise returns the format tier
+    (0.5 or 1.0) plus 1.0 if the expression is correct, else plus 0.0 —
+    total in {0.0, 0.5, 1.0, 1.5, 2.0}. Never raises.
     """
-    if format_reward(completion) == 0.0:
+    fmt = format_reward(completion)
+    if fmt == 0.0:
         return 0.0
 
     expr = extract_answer_expr(completion)
     if not expr:
-        return 0.0
+        return fmt
 
     used = _extract_used_numbers(expr)
-    if used is None:
-        return 0.0
-    if Counter(used) != Counter(numbers):
-        return 0.0
+    if used is None or Counter(used) != Counter(numbers):
+        return fmt
 
     result = _safe_eval(expr)
     if result is None:
-        return 0.0
+        return fmt
 
-    return 1.0 if abs(result - target) < eps else 0.0
+    correctness = 1.0 if abs(result - target) < eps else 0.0
+    return fmt + correctness

@@ -12,7 +12,9 @@ def test_random_solvable_puzzle_is_actually_solvable():
     for _ in range(200):
         numbers, target, expr = _random_solvable_puzzle(rng)
         completion = f"</think><answer>{expr}</answer>"
-        assert countdown_reward(completion, numbers=numbers, target=target) == 1.0
+        # additive tiered reward: format tier 1.0 (all-allowed chars) +
+        # correctness 1.0 (puzzle is solvable by construction) = 2.0.
+        assert countdown_reward(completion, numbers=numbers, target=target) == 2.0
 
 
 def test_build_countdown_dataset_rows_are_solvable():
