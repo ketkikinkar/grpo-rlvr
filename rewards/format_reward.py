@@ -21,7 +21,7 @@ def format_reward(completion: str) -> float:
 
     `completion` is expected to be the text generated AFTER the prompt's
     trailing "<think>" (see data/prompts.py), so it should not itself
-    contain a leading "<think>" tag — only the closing "</think>" onward.
+    contain a leading "<think>" tag - only the closing "</think>" onward.
     """
     match = _FORMAT_RE.match(completion)
     if match is None:

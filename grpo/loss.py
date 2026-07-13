@@ -7,13 +7,13 @@ def grpo_loss(policy_logprobs: torch.Tensor, ref_logprobs: torch.Tensor,
               kl_coef: float = 0.04) -> tuple[torch.Tensor, dict]:
     """GRPO objective: PPO-style clipped policy gradient, group-relative
     advantages (broadcast per-sequence over tokens), plus a KL-to-frozen-
-    reference penalty (no separate value/critic network — this IS the
+    reference penalty (no separate value/critic network - this IS the
     "no critic" simplification vs. PPO).
 
     Shapes: policy_logprobs/ref_logprobs/old_logprobs/completion_mask are
     (B, T) per-token log-probs (or mask) for the completion tokens only
     (prompt tokens must already be excluded/masked by the caller).
-    advantages is (B,) — one scalar per sampled completion, broadcast
+    advantages is (B,) - one scalar per sampled completion, broadcast
     across that completion's T tokens.
 
     KL uses the Schulman k3 estimator (unbiased, low-variance, always >= 0):

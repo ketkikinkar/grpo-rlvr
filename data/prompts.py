@@ -10,7 +10,7 @@ SYSTEM_TEMPLATE = (
 def build_prompt(question: str) -> str:
     """Wrap a raw question in the fixed think/answer instruction template.
 
-    Note the trailing "<think>" — this forces the model to start its
+    Note the trailing "<think>" - this forces the model to start its
     completion inside the think tag rather than needing to emit it itself,
     which stabilizes early-training format compliance.
     """

@@ -13,7 +13,7 @@ def compute_group_advantages(rewards: torch.Tensor, group_size: int, eps: float 
 
     When every completion in a group scores identically (std == 0, e.g. all
     correct or all wrong), there is no learning signal to extract from that
-    group — return exactly zero advantage rather than dividing by eps
+    group - return exactly zero advantage rather than dividing by eps
     (which would otherwise amplify float noise into a huge fake gradient).
     """
     if rewards.numel() % group_size != 0:

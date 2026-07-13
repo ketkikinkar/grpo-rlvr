@@ -60,7 +60,7 @@ def countdown_reward(completion: str, numbers: list[int], target: int, eps: floa
 
     Returns 0.0 only when the completion fails the format structure check
     entirely (no usable answer region). Otherwise returns the format tier
-    (0.5 or 1.0) plus 1.0 if the expression is correct, else plus 0.0 —
+    (0.5 or 1.0) plus 1.0 if the expression is correct, else plus 0.0 -
     total in {0.0, 0.5, 1.0, 1.5, 2.0}. Never raises.
     """
     fmt = format_reward(completion)

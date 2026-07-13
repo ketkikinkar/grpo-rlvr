@@ -34,7 +34,7 @@ def gsm8k_reward(completion: str, ground_truth_answer: float, eps: float = 1e-4)
 
     Returns 0.0 only when the completion fails the format structure check
     entirely. Otherwise returns the format tier (0.5 or 1.0) plus 1.0 if the
-    answer is correct, else plus 0.0 — total in {0.0, 0.5, 1.0, 1.5, 2.0}.
+    answer is correct, else plus 0.0 - total in {0.0, 0.5, 1.0, 1.5, 2.0}.
     Never raises on malformed model output.
     """
     fmt = format_reward(completion)

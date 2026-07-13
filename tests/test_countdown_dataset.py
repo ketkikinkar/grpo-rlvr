@@ -6,7 +6,7 @@ from rewards.countdown_verifier import countdown_reward
 
 def test_random_solvable_puzzle_is_actually_solvable():
     # Exercise the real verifier with the exact expression the generator
-    # walked — the strongest regression test against silently-unsolvable
+    # walked - the strongest regression test against silently-unsolvable
     # puzzles (e.g. from division leaving a non-integral target).
     rng = random.Random(123)
     for _ in range(200):

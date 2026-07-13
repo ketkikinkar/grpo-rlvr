@@ -33,7 +33,7 @@ def _random_solvable_puzzle(
     rng: random.Random, num_count: int = 4, max_num: int = 100, max_retries: int = 50
 ) -> tuple[list[int], int, str]:
     """Generate a Countdown puzzle by sampling `num_count` numbers, then
-    computing a reachable target via a random sequence of +,-,*,/ over them —
+    computing a reachable target via a random sequence of +,-,*,/ over them -
     guarantees the puzzle is solvable, unlike pure random target sampling.
 
     Division can produce a non-integral accumulator (e.g. 22/3), in which case
