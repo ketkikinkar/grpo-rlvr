@@ -37,6 +37,12 @@ Three training runs were run on Countdown with Qwen2.5-0.5B (base, non-instructi
 | Baseline | strict binary (0/1) | 1e-6 | 100 | ~62 min | reward flat at 0.0 (one isolated spike to 0.25 at step 13, reverted immediately) |
 | Higher-LR | strict binary (0/1) | 1e-5 | 100 | ~3.1 hrs (1 crash+restart, MPS OOM) | reward still flat (one smaller spike to 0.125 at step 63) — but **worse**: sustained KL 20-40x higher than baseline (0.06-0.4 vs baseline's ~0.005 peak), 3 grad_norm spikes (steps 15/72/77, one reaching ~11544), final checkpoint output degenerate (repetitive `<think>` loops) |
 
+![Reward vs. training step, three runs compared](results/reward_curves.png)
+![KL-to-reference vs. training step, three runs compared](results/kl_curves.png)
+
+Raw per-step metrics (reward, KL, response length, grad norm, loss) for
+each of the three runs charted above are in `results/*_metrics.csv`.
+
 **Root cause**, confirmed via research against reference-implementation source
 (McGill-NLP/nano-aha-moment, Jiayi-Pan/TinyZero, policy-gradient/GRPO-Zero,
 huggingface/open-r1) and the literature (arXiv 2605.21125, "Advantage
@@ -123,6 +129,8 @@ documented in code (`eval/scaling_curve.py`) with a regression test
 does not apply to GSM8K, where the ground truth genuinely is the literal
 final answer.
 
+![Response length vs. training step, three runs compared](results/response_length_curves.png)
+
 ### Cost / compute
 
 All work done locally on an Apple Silicon M2 Pro (16GB unified memory),
@@ -152,10 +160,24 @@ python scripts/train.py --config configs/countdown_qwen0.5b_run100_lr1e5.yaml
 python scripts/train.py --config configs/countdown_qwen0.5b_run100.yaml --run_id shaped_reward_run
 
 # held-out evaluation, base vs. trained
-python eval/evaluate.py --checkpoint <path/to/checkpoint>
+# (no CLI wrapper yet — eval/evaluate.py exposes evaluate_checkpoint()/aggregate_accuracy()
+# as library functions; scripts/eval.py was intentionally not built this session, see
+# "Out of scope" below)
+python -c "
+from data.countdown import build_countdown_dataset
+from eval.evaluate import evaluate_checkpoint
+ds = build_countdown_dataset(n_examples=30, seed=999)
+print(evaluate_checkpoint('Qwen/Qwen2.5-0.5B', ds, 'countdown'))
+print(evaluate_checkpoint('runs/<run_id>/checkpoints/step_99', ds, 'countdown'))
+"
 
-# pass@k / majority-vote@k scaling curve
-python eval/scaling_curve.py --checkpoint <path/to/checkpoint>
+# pass@k / majority-vote@k scaling curve (same library-function pattern)
+python -c "
+from data.countdown import build_countdown_dataset
+from eval.scaling_curve import build_scaling_curve
+ds = build_countdown_dataset(n_examples=10, seed=999)
+print(build_scaling_curve('runs/<run_id>/checkpoints/step_99', ds, 'countdown', ks=[1,2,4,8]))
+"
 ```
 
 If running on Apple Silicon with limited unified memory, set
@@ -167,6 +189,7 @@ risk of an MPS OOM crash mid-run.
 - Reference-repo reproduction (M1) — no cloud GPU rental for this project; would revisit with rented compute.
 - 7B+ models, multi-node training, the full multi-stage R1 pipeline (R1-Zero → cold-start SFT → reasoning RL → rejection sampling → final RL), learned reward models.
 - vLLM rollout backend — HF `generate` used throughout; fine at this model/batch scale but would not scale to larger sampling budgets.
+- `scripts/eval.py` CLI driver — `eval/evaluate.py` and `eval/scaling_curve.py` are fully built and unit-tested library functions, but a committed command-line wrapper around them was intentionally scoped out this session in favor of throwaway scripts for local-dev iteration; see "Reproducing" above for the direct function-call pattern used instead.
 - GSM8K training run — the data/verifier pipeline is built and unit-tested (`tests/test_gsm8k_verifier.py`) but was not exercised end-to-end in a training run this session; only Countdown was trained.
 - TRL `GRPOTrainer` baseline comparison — not run. The from-scratch implementation's correctness was instead validated via extensive independent code review (hand-traced advantage/loss math against reference implementations) plus the reward-shaping fix's clean empirical success, which is strong indirect evidence the core loop is correct.
 - Genuine Countdown-solving capability at this scale was not reached: 0.5B params, 100 GRPO steps, group_size=4, 8 rollouts/step is consistent with TinyZero's own documented finding that 0.5B fails in their pipeline too. A larger model (1.5B+) or a much larger sampling budget (matching reference implementations' 64-1024 rollouts/step) would likely be needed to see genuine correctness emerge — "expecting too much from a tiny model" was a known risk going in.
